@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pentesting Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .loader {
+            border: 16px solid #34495e; /* Dark grey */
+            border-top: 16px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            margin: 20px;
+        }
+        .dropdown-container {
+            position: relative;
+        }
+        .dropdown-input {
+            width: 250px;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            z-index: 1000;
+            max-height: 150px;
+            overflow-y: auto;
+            border-radius: 4px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .dropdown-menu div {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .dropdown-menu div:hover {
+            background-color: #ecf0f1;
+        }
+        .control-buttons {
+            margin: 20px;
+            text-align: center;
+        }
+        #start-pentest {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #start-pentest:hover {
+            background-color: #2980b9;
+        }
+        table {
+            width: 90%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+        td {
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Pentesting Dashboard</h1>
+    </header>
+    <main>
+        <div class="dropdown">
+            <div class="dropdown-container">
+                <input type="text" class="dropdown-input" id="domain-input" placeholder="Select or type a domain..." aria-label="Select UAE Government Domains">
+                <div class="dropdown-menu" id="dropdown-menu">
+                    <!-- Domain options will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="control-buttons">
+            <button id="start-pentest">Start Pentesting</button>
+        </div>
+
+        <div id="loader" class="hidden">
+            <div class="loader"></div>
+        </div>
+
+        <div id="results">
+            <table id="result-table">
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Pentesting results will be added here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        const domains = [
+            "gov.ae",
+            "mohap.gov.ae",
+            "mofaic.gov.ae",
+            "moccae.gov.ae",
+            "adpolice.gov.ae",
+            "dubaipolice.gov.ae",
+            "sheikhmohammed.ae",
+            "http://vulnweb.com/",
+            "adb.gov.ae"
+        ];
+
+        const input = document.getElementById('domain-input');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        const startPentestButton = document.getElementById('start-pentest');
+        const loader = document.getElementById('loader');
+        const resultTableBody = document.getElementById('result-table').getElementsByTagName('tbody')[0];
+
+        function filterDomains(query) {
+            dropdownMenu.innerHTML = ''; // Clear previous options
+            const filteredDomains = domains.filter(domain => domain.toLowerCase().includes(query.toLowerCase()));
+
+            filteredDomains.forEach(domain => {
+                const div = document.createElement('div');
+                div.textContent = domain;
+                div.addEventListener('click', () => {
+                    input.value = domain;
+                    dropdownMenu.style.display = 'none';
+                });
+                dropdownMenu.appendChild(div);
+            });
+
+            dropdownMenu.style.display = filteredDomains.length > 0 ? 'block' : 'none';
+        }
+
+        input.addEventListener('input', (event) => {
+            filterDomains(event.target.value);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.dropdown-container')) {
+                dropdownMenu.style.display = 'none';
+            }
+        });
+
+        function startPentest() {
+            const selectedDomain = input.value;
+
+            if (!selectedDomain) {
+                alert('Please select or enter a domain.');
+                return;
+            }
+
+            startPentestButton.disabled = true;
+            loader.classList.remove('hidden');
+            resultTableBody.innerHTML = ''; // Clear previous results
+
+            // Send a request to the backend to start the ZAP scan
+            fetch(`/start-scan?domain=${encodeURIComponent(selectedDomain)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();  // Expect JSON
+                })
+                .then(data => {
+                    // Populate the table with the scan results
+                    const results = data.message.trim().split('\n').slice(2); // Adjust parsing as needed
+                    results.forEach(result => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${result}</td>
+                        `;
+                        resultTableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    alert(`Error: ${error.message}`);
+                })
+                .finally(() => {
+                    startPentestButton.disabled = false;
+                    loader.classList.add('hidden');
+                });
+        }
+
+        startPentestButton.addEventListener('click', startPentest);
+    </script>
+</body>
+</html>
